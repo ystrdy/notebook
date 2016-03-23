@@ -21,7 +21,61 @@ document.getElementsByTagName('body')[0].appendChild(script);
 
 发送事件的方法：
 ```javascript
-var eve = document.createEvent('HTMLEvents');
-eve.initEvent('change', true, true);
-element.dispatchEvent(eve);
+// 消息通信
+/**
+ * content script 和 page script之间通信的类
+ * @param {String} content id，取值任意
+ * @param {String} page    id，取值任意
+ * @param {String} context page|content
+ */
+var Message = function(content, page, context){
+    this.content = content;
+    this.page = page;
+    this.context = context;
+
+    this.init();
+};
+
+Message.prototype = {
+    init : function(){
+        [this.content, this.page].forEach(function(id){
+            var _div = document.getElementById(id);
+            if (!_div) {
+                _div = document.createElement('div');
+                _div.id = id;
+                document.getElementsByTagName('body')[0].appendChild(_div);
+            }
+            if (this[this.context] === id) {
+                var self = this;
+                _div.addEventListener('change', function(event){
+                    if (self.onMessage) {
+                        self.onMessage(JSON.parse(this.innerHTML));
+                        this.innerHTML = '';
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                }, false);
+            }
+        }, this);
+    },
+    sendMessage : function(data){
+        var _div = document.getElementById(this[this.context === 'page' ? 'content' : 'page']);
+        if (_div) {
+            var eve = document.createEvent('HTMLEvents');
+            eve.initEvent('change', false, true);
+            eve.___extra = data;
+            _div.innerHTML = JSON.stringify(data);
+            _div.dispatchEvent(eve);
+        }
+    }
+};
+
+// 例子
+var msg = new Message('content', 'page', 'page');
+msg.onMessage = function(data){
+    console.log(data);
+};
+msg.sendMessage({
+
+});
 ```
